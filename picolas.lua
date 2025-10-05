@@ -59,30 +59,56 @@ makeButton("Noclip", 40, function()
     end)
 end)
 
--- // 2. Fly
+-- // 2. Fly (móvil y PC compatible, se mueve con la cámara y joystick)
 makeButton("Fly", 80, function()
     flying = not flying
     local hrp = humanoid
+    local cam = workspace.CurrentCamera
     local UIS = game:GetService("UserInputService")
-    local speed = 60
+    local RS = game:GetService("RunService")
+
     local flyVel = Instance.new("BodyVelocity", hrp)
+    flyVel.Velocity = Vector3.zero
+    flyVel.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+
     local flyGyro = Instance.new("BodyGyro", hrp)
     flyGyro.P = 9e4
     flyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-    flyVel.Velocity = Vector3.zero
+    flyGyro.CFrame = cam.CFrame
+
+    local speed = 70
 
     task.spawn(function()
-        while flying do
-            task.wait()
-            local cam = workspace.CurrentCamera
+        while flying and task.wait() do
             flyGyro.CFrame = cam.CFrame
+
+            -- Dirección general del vuelo
             local moveDir = Vector3.zero
-            if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir += cam.CFrame.LookVector end
-            if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir -= cam.CFrame.LookVector end
-            if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir -= cam.CFrame.RightVector end
-            if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir += cam.CFrame.RightVector end
+
+            -- Leer teclas o joystick
+            if UIS:IsKeyDown(Enum.KeyCode.W) or UIS:IsKeyDown(Enum.KeyCode.Thumbstick1) then
+                moveDir += cam.CFrame.LookVector
+            end
+            if UIS:IsKeyDown(Enum.KeyCode.S) then
+                moveDir -= cam.CFrame.LookVector
+            end
+            if UIS:IsKeyDown(Enum.KeyCode.Space) then
+                moveDir += Vector3.new(0, 1, 0)
+            end
+            if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then
+                moveDir -= Vector3.new(0, 1, 0)
+            end
+
+            -- Detectar movimiento del joystick móvil
+            local moveVec = UIS:GetGamepadState(Enum.UserInputType.Gamepad1)[1]
+            if moveVec then
+                local joy = moveVec.Position
+                moveDir += (cam.CFrame.RightVector * joy.X) + (cam.CFrame.LookVector * joy.Y)
+            end
+
             flyVel.Velocity = moveDir * speed
         end
+
         flyVel:Destroy()
         flyGyro:Destroy()
     end)
